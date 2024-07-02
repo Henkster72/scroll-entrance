@@ -1,132 +1,64 @@
-
 (function() {
+  const entrance = {
+    duration: 1000,
+    distance: 200,
+    heightOffset: 200,
 
-      //Create the object for the entrance plugin
-      entrance = {};
+    isElemInView(elem) {
+      const rect = elem.getBoundingClientRect();
+      return (
+        (rect.top + this.heightOffset) >= 0 && (rect.top + this.heightOffset) <= window.innerHeight ||
+        (rect.bottom + this.heightOffset) >= 0 && (rect.bottom + this.heightOffset) <= window.innerHeight ||
+        (rect.top + this.heightOffset) < 0 && (rect.bottom + this.heightOffset) > window.innerHeight
+      );
+    },
 
-      //Set up defaults
-      entrance.duration = "1000";
-      entrance.distance = "200";
-      entrance.heightOffset = 200;
+    setInitialStyles(elem) {
+      document.body.style.overflowX = "hidden";
+      const anim = elem.getAttribute("data-entrance");
+      const delay = elem.getAttribute("data-entrance-delay");
 
-      entrance.isElemInView = function(elem) {
+      elem.style.transition = `all ${this.duration / 1000}s ease`;
+      if (delay) elem.style.transitionDelay = `${delay / 1000}s`;
+      elem.style.opacity = "0";
 
-          var rect = elem.getBoundingClientRect();
+      const transforms = {
+        "from-left": `translate(-${this.distance}px, 0)`,
+        "from-right": `translate(${this.distance}px, 0)`,
+        "from-top": `translate(0, -${this.distance}px)`,
+        "from-bottom": `translate(0, ${this.distance}px)`
+      };
 
-          //Return true if any of the following conditions are met:
-          return(
-            // The top is in view: the top is more than 0 and less than the window height (the top of the element is in view)
-            ( (rect.top + entrance.heightOffset) >= 0 && (rect.top + entrance.heightOffset) <= window.innerHeight ) || 
-            // The bottom is in view: bottom position is greater than 0 and greater than the window height
-            ( (rect.bottom + entrance.heightOffset) >= 0 && (rect.bottom + entrance.heightOffset) <= window.innerHeight ) ||
-            // The top is above the viewport and the bottom is below the viewport
-            ( (rect.top + entrance.heightOffset) < 0 && (rect.bottom + entrance.heightOffset) > window.innerHeight )
-          )
+      if (transforms[anim]) elem.style.transform = transforms[anim];
+    },
 
-      }
+    enter(elem) {
+      elem.style.visibility = "visible";
+      elem.style.opacity = "1";
+      elem.style.transform = "translate(0, 0)";
+      elem.classList.add("has-entered");
+    },
 
-      entrance.setInitialStyles = function(elem){
-
-        //Required style on the body to stop horizontal scrollbars
-        document.body.style.overflowX = "hidden";
-
-
-        var anim = elem.getAttribute("data-entrance");
-        var delay = elem.getAttribute("data-entrance-delay");
-
-        elem.style.transition = "all " + (entrance.duration / 1000) + "s ease";
-
-        // Add a delay is required
-        if (delay) {
-          elem.style.transitionDelay = (delay / 1000) + 's';
+    viewportChange() {
+      Array.from(this.elements).forEach(item => {
+        if (this.isElemInView(item) && !item.classList.contains("has-entered")) {
+          this.enter(item);
         }
+      });
+    },
 
-        // Set up transition types
-
-        if (anim == "fade") {
-          elem.style.opacity = "0";
+    init() {
+      this.elements = document.querySelectorAll('[data-entrance]');
+      this.elements.forEach(item => {
+        this.setInitialStyles(item);
+        if (this.isElemInView(item)) {
+          window.addEventListener('load', () => this.enter(item), { once: true });
         }
+      });
+    }
+  };
 
-        if (anim == "from-left") {
-          elem.style.opacity = "0";
-          elem.style.transform = "translate(-" + entrance.distance + "px, 0)";
-        }
-
-        if (anim == "from-right") {
-          elem.style.opacity = "0";
-          elem.style.transform = "translate(" + entrance.distance + "px, 0)";
-        }
-
-        if (anim == "from-top") {
-          elem.style.opacity = "0";
-          elem.style.transform = "translate(0, -" + entrance.distance + "px)";
-        }
-
-        if (anim == "from-bottom") {
-          elem.style.opacity = "0";
-          elem.style.transform = "translate(0, " + entrance.distance + "px)";
-        }     
-
-      }
-
-
-      entrance.enter = function(elem){
-
-        elem.style.visibility = "visible";
-        elem.style.opacity = "1";
-        elem.style.transform = "translate(0, 0)";
-
-        elem.className += " has-entered";
-
-      }
-
-
-      entrance.viewportChange = function(){
-
-        Array.prototype.map.call(entrance.elements, function(item) {
-
-          if ( entrance.isElemInView(item) ){
-
-            var hasEntered = item.classList.contains("has-entered");
-
-            if (!hasEntered){
-              entrance.enter(item);
-            }
-
-          }
-
-        });
-        
-      }
-
-      entrance.init = function(){
-        
-        //Store the elements to be animated
-        entrance.elements = document.querySelectorAll('[data-entrance]');
-
-        // Set up the initial styles on each element, and check if they schould be visible
-        Array.prototype.map.call(entrance.elements, function(item) {
-
-          entrance.setInitialStyles( item );
-
-          if (entrance.isElemInView(item) ){
-
-            // If the elements are in view when loaded, animate in after load
-            addEventListener('load', function(){
-              entrance.enter( item );
-            }, false );
-            
-          }
-
-        });
-
-      }
-
-      // Initialise the plugin when the DOM is loaded
-      addEventListener('DOMContentLoaded', entrance.init, false );
-
-      // Add event liseners for scroll events
-      addEventListener('scroll', entrance.viewportChange, false); 
-      addEventListener('resize', entrance.viewportChange, false); 
-
-}());
+  window.addEventListener('DOMContentLoaded', () => entrance.init(), { once: true });
+  window.addEventListener('scroll', () => entrance.viewportChange());
+  window.addEventListener('resize', () => entrance.viewportChange());
+})();
